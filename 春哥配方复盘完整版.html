@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>每日配方记录与复盘</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        /* 日期选择器 */
+        .date-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+        .date-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        /* 配方类型标签 */
+        .scheme-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e8e8e8;
+        }
+        .scheme-tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: all 0.2s;
+        }
+        .scheme-tab:active {
+            background-color: #f0f0f0;
+        }
+        .scheme-tab.active {
+            border-bottom-color: #1890ff;
+            color: #1890ff;
+            font-weight: bold;
+        }
+        
+        /* 配方内容区域 */
+        .scheme-content {
+            margin-bottom: 30px;
+        }
+        
+        /* 配方选择器 */
+        .scheme-selector {
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .ingredient-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .ingredient-item {
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            padding: 15px;
+            background: #fafafa;
+        }
+        .ingredient-item.hidden {
+            display: none;
+        }
+        .ingredient-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .ingredient-title {
+            font-weight: bold;
+            color: #1890ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* 选项网格 - 参考源文件布局 */
+        .option-container {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+        .handicap-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .handicap-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 40px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .option-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .option-item {
+            height: 40px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-weight: bold;
+            background-color: white;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .option-item.selectable:hover {
+            background-color: #f0f0f0;
+        }
+        .option-item.selectable:active {
+            transform: scale(0.95);
+        }
+        .option-item.selected {
+            background-color: #ff4d4f;
+            color: white;
+            border-color: #ff4d4f;
+        }
+        .option-item.selected::after {
+            content: "✓";
+            font-size: 18px;
+        }
+        .option-item.correct-answer {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        .option-item.correct-answer::after {
+            content: "✓";
+            font-size: 18px;
+        }
+        
+        /* 复盘模式下的样式 */
+        .ingredient-item.review-correct .option-item.selected {
+            background-color: #ff4d4f;
+            color: white;
+            border-color: white;
+        }
+        .ingredient-item.review-correct .option-item.selected::after {
+            content: "✓";
+            font-size: 18px;
+            color: white;
+            font-weight: bold;
+        }
+        .ingredient-item.review-incorrect .option-item.selected {
+            background-color: #333;
+            color: white;
+            border-color: white;
+        }
+        .ingredient-item.review-incorrect .option-item.selected::after {
+            content: "✗";
+            font-size: 18px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* 配方预览 */
+        .scheme-preview {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+        .preview-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        /* 配方判定 */
+        .result-selector {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            align-items: center;
+        }
+        .result-btn {
+            padding: 10px 20px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-weight: bold;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: all 0.2s;
+        }
+        .result-btn:active {
+            transform: scale(0.95);
+        }
+        .result-btn.good {
+            border-color: #ff4d4f;
+            color: #ff4d4f;
+        }
+        .result-btn.bad {
+            border-color: #333;
+            color: #333;
+        }
+        .result-btn.selected.good {
+            background: #ff4d4f;
+            color: white;
+            font-weight: bold;
+        }
+        .result-btn.selected.bad {
+            background: #333;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* 操作按钮 */
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: all 0.2s;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn-primary {
+            background: #1890ff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #40a9ff;
+        }
+        .btn-success {
+            background: #52c41a;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #73d13d;
+        }
+        .btn-danger {
+            background: #ff4d4f;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #ff7875;
+        }
+        
+        /* 周复盘表格 */
+        .week-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .week-table th,
+        .week-table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #e8e8e8;
+        }
+        .week-table th {
+            background: #fafafa;
+            font-weight: bold;
+        }
+        .good-cell { 
+            background: #ff4d4f; 
+            color: white; 
+            font-weight: bold; 
+        }
+        .bad-cell { 
+            background: #333; 
+            color: white; 
+            font-weight: bold; 
+        }
+        .pending-cell { background: #f0f0f0; color: #666; }
+        
+        /* 统计面板 */
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .stat-card.small .stat-value { color: #ff4d4f; }
+        .stat-card.medium .stat-value { color: #faad14; }
+        .stat-card.large .stat-value { color: #52c41a; }
+        .stat-card.xlarge .stat-value { color: #1890ff; }
+        
+        /* 视图切换 */
+        .view-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e8e8e8;
+        }
+        .view-tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: all 0.2s;
+        }
+        .view-tab:active {
+            background-color: #f0f0f0;
+        }
+        .view-tab.active {
+            border-bottom-color: #1890ff;
+            color: #1890ff;
+            font-weight: bold;
+        }
+        
+        /* 隐藏内容 */
+        .hidden {
+            display: none;
+        }
+
+        /* 分享卡片样式 */
+        .share-card {
+            position: fixed;
+            left: -9999px;
+            top: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            min-width: 600px;
+            max-width: 800px;
+        }
+
+        .share-header {
+            text-align: center;
+            margin-bottom: 25px;
+            color: white;
+        }
+
+        .share-header h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .share-date {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .share-content {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .share-scheme-type {
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .share-ingredients {
+            margin-bottom: 20px;
+        }
+
+        .share-ingredient-item {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .share-ingredient-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .share-ingredient-detail {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .share-result {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .share-result.good {
+            background: #ff4d4f;
+            color: white;
+        }
+
+        .share-result.bad {
+            background: #333;
+            color: white;
+        }
+
+        .share-result.pending {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .share-footer {
+            text-align: center;
+            color: white;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .share-qrcode {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .share-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e8e8e8;
+        }
+
+        .share-stat-item {
+            text-align: center;
+        }
+
+        .share-stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .share-stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        /* 单场配料操作 */
+        .ingredient-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .ingredient-action-btn {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .review-select {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .review-select.correct {
+            color: #ff4d4f;
+            border-color: #ff4d4f;
+        }
+        .review-select.incorrect {
+            color: #333;
+            border-color: #333;
+        }
+        
+        /* 配料选择器 */
+        .ingredient-select {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        /* 移动端适配 */
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 15px;
+                border-radius: 4px;
+            }
+
+            h1 {
+                font-size: 20px;
+                margin-bottom: 15px;
+            }
+
+            h2 {
+                font-size: 18px;
+                margin-bottom: 15px;
+            }
+
+            h3 {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+
+            /* 日期选择器 */
+            .date-selector {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .date-input {
+                width: 100%;
+                padding: 12px;
+                font-size: 16px;
+            }
+
+            /* 标签页 */
+            .scheme-tabs,
+            .view-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                flex-wrap: nowrap;
+            }
+
+            .scheme-tab,
+            .view-tab {
+                padding: 10px 16px;
+                font-size: 14px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            /* 配料网格 */
+            .ingredient-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .ingredient-item {
+                padding: 12px;
+            }
+
+            /* 配料标题和操作 */
+            .ingredient-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .ingredient-title {
+                font-size: 14px;
+            }
+
+            .ingredient-select {
+                width: 70px;
+                font-size: 14px;
+            }
+
+            /* 选项容器 */
+            .option-container {
+                grid-template-columns: 70px 1fr;
+                gap: 8px;
+            }
+
+            .handicap-item {
+                height: 45px;
+                font-size: 16px;
+            }
+
+            .option-item {
+                height: 45px;
+                font-size: 16px;
+            }
+
+            /* 配方判定按钮 */
+            .result-selector {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .result-btn {
+                width: 100%;
+                padding: 12px;
+                font-size: 16px;
+            }
+
+            /* 操作按钮 */
+            .actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .btn {
+                width: 100%;
+                padding: 12px 20px;
+                font-size: 16px;
+            }
+
+            /* 统计面板 */
+            .stats-panel {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .stat-card {
+                padding: 15px;
+            }
+
+            .stat-value {
+                font-size: 20px;
+            }
+
+            /* 表格 */
+            .week-table {
+                font-size: 12px;
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .week-table thead,
+            .week-table tbody,
+            .week-table tr {
+                display: table;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .week-table th,
+            .week-table td {
+                padding: 8px 4px;
+                font-size: 12px;
+            }
+
+            /* 配料操作 */
+            .ingredient-actions {
+                flex-wrap: wrap;
+            }
+
+            .ingredient-action-btn,
+            .review-select {
+                padding: 8px 12px;
+                font-size: 14px;
+                touch-action: manipulation;
+            }
+
+            /* 配方预览 */
+            .scheme-preview {
+                padding: 12px;
+                font-size: 14px;
+            }
+
+            .preview-title {
+                font-size: 14px;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 18px;
+            }
+
+            .scheme-tab,
+            .view-tab {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+
+            .option-container {
+                grid-template-columns: 60px 1fr;
+            }
+
+            .option-grid {
+                gap: 6px;
+            }
+
+            .handicap-item {
+                height: 42px;
+                font-size: 15px;
+            }
+
+            .option-item {
+                height: 42px;
+                font-size: 15px;
+            }
+
+            .week-table th,
+            .week-table td {
+                padding: 6px 2px;
+                font-size: 11px;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>每日配方记录与复盘</h1>
+        
+        <!-- 视图切换 -->
+        <div class="view-tabs">
+            <div class="view-tab active" onclick="switchView('daily')">每日记录</div>
+            <div class="view-tab" onclick="switchView('weekly')">周度复盘</div>
+        </div>
+        
+        <!-- 每日记录视图 -->
+        <div id="dailyView">
+            <!-- 日期选择器 -->
+            <div class="date-selector">
+                <h3>选择日期：</h3>
+                <input type="date" class="date-input" id="dateInput" value="">
+                <button class="btn btn-primary" onclick="loadDateData()">加载当日配方</button>
+                <button class="btn btn-success" onclick="saveDateData()">保存当日配方</button>
+            </div>
+            
+            <!-- 配方类型标签 -->
+            <div class="scheme-tabs">
+                <div class="scheme-tab active" onclick="switchScheme('small')">小杯 (2x1)</div>
+                <div class="scheme-tab" onclick="switchScheme('medium')">中杯 (2x1)</div>
+                <div class="scheme-tab" onclick="switchScheme('large')">大杯 (3x1)</div>
+                <div class="scheme-tab" onclick="switchScheme('xlarge')">超大杯 (mxn)</div>
+            </div>
+            
+            <!-- 当前配方内容 -->
+            <div class="scheme-content">
+                <div id="schemeContent">
+                    <!-- 配方内容将通过JS动态生成 -->
+                </div>
+                
+                <!-- 配方判定 -->
+                <div class="result-selector">
+                    <div>配方结果判定：</div>
+                    <button class="result-btn good" onclick="setResult('good')">好评</button>
+                    <button class="result-btn bad" onclick="setResult('bad')">差评</button>
+                    <button class="result-btn" onclick="setResult('pending')">未开</button>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button class="btn btn-primary" onclick="saveDateData()">保存当日配方</button>
+                <button class="btn btn-success" onclick="shareScheme()">分享配方图片</button>
+                <button class="btn btn-danger" onclick="resetCurrentScheme()">重置当前配方</button>
+            </div>
+        </div>
+
+        <!-- 隐藏的分享卡片 -->
+        <div id="shareCard" class="share-card">
+            <!-- 内容将通过 JS 动态生成 -->
+        </div>
+        
+        <!-- 周度复盘视图 -->
+        <div id="weeklyView" class="hidden">
+            <!-- 周选择器 -->
+            <div class="date-selector">
+                <h3>选择周次：</h3>
+                <input type="week" class="date-input" id="weekInput" value="">
+                <button class="btn btn-primary" onclick="loadWeekData()">加载周数据</button>
+            </div>
+            
+            <!-- 周统计 -->
+            <h2>周度统计</h2>
+            <div class="stats-panel">
+                <div class="stat-card small">
+                    <div>小杯配方</div>
+                    <div class="stat-value" id="smallStats">0/0</div>
+                    <div>好评率: <span id="smallRate">0%</span></div>
+                </div>
+                <div class="stat-card medium">
+                    <div>中杯配方</div>
+                    <div class="stat-value" id="mediumStats">0/0</div>
+                    <div>好评率: <span id="mediumRate">0%</span></div>
+                </div>
+                <div class="stat-card large">
+                    <div>大杯配方</div>
+                    <div class="stat-value" id="largeStats">0/0</div>
+                    <div>好评率: <span id="largeRate">0%</span></div>
+                </div>
+                <div class="stat-card xlarge">
+                    <div>超大杯配方</div>
+                    <div class="stat-value" id="xlargeStats">0/0</div>
+                    <div>好评率: <span id="xlargeRate">0%</span></div>
+                </div>
+            </div>
+            
+            <!-- 周复盘表格 -->
+            <h2>详细复盘记录</h2>
+            <div id="weekTableContainer">
+                <!-- 周表格将通过JS动态生成 -->
+            </div>
+            
+            <div class="actions">
+                <button class="btn btn-primary" onclick="exportWeekData()">导出周数据(CSV)</button>
+                <button class="btn btn-success" onclick="generateWeekReport()">生成周报</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 应用数据
+        let appData = {
+            currentDate: '',
+            currentScheme: 'small',
+            currentView: 'daily',
+            dailyData: {} // 按日期存储的数据
+        };
+
+        // 让球选项
+        const handicapOptions = [
+            { value: -4, text: "-4" },
+            { value: -3, text: "-3" },
+            { value: -2, text: "-2" },
+            { value: -1, text: "-1" },
+            { value: 0, text: "0" },
+            { value: 1, text: "+1" },
+            { value: 2, text: "+2" },
+            { value: 3, text: "+3" },
+            { value: 4, text: "+4" }
+        ];
+
+        // 初始化
+        function initialize() {
+            // 设置默认日期为今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dateInput').value = today;
+            appData.currentDate = today;
+            
+            // 加载保存的数据
+            loadSavedData();
+            
+            // 初始化界面
+            loadDateData();
+        }
+
+        // 加载保存的数据
+        function loadSavedData() {
+            const saved = localStorage.getItem('dailySchemeData');
+            if (saved) {
+                appData.dailyData = JSON.parse(saved);
+            }
+        }
+
+        // 保存数据
+        function saveData() {
+            localStorage.setItem('dailySchemeData', JSON.stringify(appData.dailyData));
+        }
+
+        // 切换视图
+        function switchView(view) {
+            appData.currentView = view;
+            
+            // 更新标签状态
+            document.querySelectorAll('.view-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 显示/隐藏视图
+            document.getElementById('dailyView').classList.toggle('hidden', view !== 'daily');
+            document.getElementById('weeklyView').classList.toggle('hidden', view !== 'weekly');
+            
+            if (view === 'weekly') {
+                // 初始化周视图
+                const today = new Date();
+                const year = today.getFullYear();
+                const week = getWeekNumber(today);
+                document.getElementById('weekInput').value = `${year}-W${week < 10 ? '0' + week : week}`;
+                loadWeekData();
+            }
+        }
+
+        // 获取周数
+        function getWeekNumber(date) {
+            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+            const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        }
+
+        // 切换配方类型
+        function switchScheme(schemeType) {
+            appData.currentScheme = schemeType;
+            
+            // 更新标签状态
+            document.querySelectorAll('.scheme-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderSchemeContent();
+        }
+
+        // 创建初始配料数据
+        function createInitialIngredients(count) {
+            const ingredients = [];
+            for (let i = 1; i <= count; i++) {
+                const id = i < 10 ? `00${i}` : `0${i}`;
+                ingredients.push({
+                    index: i,
+                    id: id,
+                    selectedHandicap: 0,
+                    selectedOptions: [],
+                    hidden: false,
+                    reviewStatus: 'unset',
+                    correctAnswer: null
+                });
+            }
+            return ingredients;
+        }
+
+        // 渲染配方内容
+        function renderSchemeContent() {
+            const container = document.getElementById('schemeContent');
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            
+            // 确保日期数据存在
+            if (!appData.dailyData[date]) {
+                appData.dailyData[date] = {};
+            }
+            
+            // 确保配方数据存在
+            if (!appData.dailyData[date][schemeType]) {
+                const ingredientCounts = {
+                    small: 2,
+                    medium: 2,
+                    large: 3,
+                    xlarge: 8
+                };
+                
+                appData.dailyData[date][schemeType] = {
+                    ingredients: createInitialIngredients(ingredientCounts[schemeType]),
+                    result: 'pending'
+                };
+            }
+            
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            // 根据配方类型显示不同的配料数量
+            const ingredientCounts = {
+                small: 2,
+                medium: 2,
+                large: 3,
+                xlarge: 8
+            };
+            
+            const schemeNames = {
+                small: '小杯 (2x1)',
+                medium: '中杯 (2x1)',
+                large: '大杯 (3x1)',
+                xlarge: '超大杯 (mxn)'
+            };
+            
+            let html = `
+                <div class="scheme-selector">
+                    <h3>${schemeNames[schemeType]} - 选择配方</h3>
+                    <div>需要选择 ${ingredientCounts[schemeType]} 个配料</div>
+                    <div class="ingredient-grid" id="ingredientGrid">
+                        <!-- 配料选择器将通过JS动态生成 -->
+                    </div>
+                    
+                    <div class="scheme-preview">
+                        <div class="preview-title">当前配方预览：</div>
+                        <div id="schemePreview">${getSchemePreview(schemeData.ingredients)}</div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            
+            // 渲染配料选择器
+            renderIngredientSelector();
+            
+            // 更新配方判定按钮状态
+            updateResultButtons(schemeData.result);
+        }
+
+        // 渲染配料选择器
+        function renderIngredientSelector() {
+            const container = document.getElementById('ingredientGrid');
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            // 根据配方类型决定显示多少个配料
+            const ingredientCounts = {
+                small: 2,
+                medium: 2,
+                large: 3,
+                xlarge: 8
+            };
+            
+            const totalIngredients = ingredientCounts[schemeType];
+            
+            let html = '';
+            for (let i = 1; i <= totalIngredients; i++) {
+                // 查找配料数据
+                let ingredientData = schemeData.ingredients.find(m => m.index === i);
+                if (!ingredientData) {
+                    // 如果配料数据不存在，创建默认数据
+                    const id = i < 10 ? `00${i}` : `0${i}`;
+                    ingredientData = {
+                        index: i,
+                        id: id,
+                        selectedHandicap: 0,
+                        selectedOptions: [],
+                        hidden: false,
+                        reviewStatus: 'unset',
+                        correctAnswer: null
+                    };
+                    schemeData.ingredients.push(ingredientData);
+                }
+                
+                // 如果配料被隐藏，添加hidden类
+                const hiddenClass = ingredientData.hidden ? 'hidden' : '';
+                
+                // 根据配方类型决定是否显示隐藏按钮
+                const hideButtonHtml = schemeType === 'xlarge' ? 
+                    `<button class="ingredient-action-btn" onclick="toggleIngredient(${i})">${ingredientData.hidden ? '显示' : '隐藏'}</button>` : '';
+                
+                html += `
+                    <div class="ingredient-item ${hiddenClass}" id="ingredientItem${i}">
+                        <div class="ingredient-header">
+                            <div class="ingredient-title">
+                                配料
+                                <select class="ingredient-select" onchange="updateIngredientId(${i}, this.value)">
+                                    ${Array.from({length: 45}, (_, idx) => {
+                                        const id = idx < 9 ? `00${idx+1}` : idx < 99 ? `0${idx+1}` : `${idx+1}`;
+                                        return `<option value="${id}" ${id === ingredientData.id ? 'selected' : ''}>${id}</option>`;
+                                    }).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                ${hideButtonHtml}
+                                <select class="review-select" id="reviewSelect${i}" onchange="updateReviewStatus(${i}, this.value)">
+                                    <option value="unset">--</option>
+                                    <option value="correct" style="color: #ff4d4f; font-weight: bold;">✓</option>
+                                    <option value="incorrect" style="color: #333; font-weight: bold;">✗</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="option-container">
+                            <div class="handicap-row">
+                                <div class="handicap-item">0</div>
+                                <div class="handicap-item">
+                                    <select class="handicap-select" onchange="updateHandicap(${i}, this.value)">
+                                        ${handicapOptions.map(opt => 
+                                            `<option value="${opt.value}" ${opt.value === ingredientData.selectedHandicap ? 'selected' : ''}>${opt.text}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="option-grid">
+                                <div class="option-item selectable ${ingredientData.selectedOptions.includes(1) ? 'selected' : ''}" 
+                                     onclick="toggleOption(${i}, 1)">3</div>
+                                <div class="option-item selectable ${ingredientData.selectedOptions.includes(2) ? 'selected' : ''}" 
+                                     onclick="toggleOption(${i}, 2)">1</div>
+                                <div class="option-item selectable ${ingredientData.selectedOptions.includes(3) ? 'selected' : ''}" 
+                                     onclick="toggleOption(${i}, 3)">0</div>
+                                <div class="option-item selectable ${ingredientData.selectedOptions.includes(4) ? 'selected' : ''}" 
+                                     onclick="toggleOption(${i}, 4)">3</div>
+                                <div class="option-item selectable ${ingredientData.selectedOptions.includes(5) ? 'selected' : ''}" 
+                                     onclick="toggleOption(${i}, 5)">1</div>
+                                <div class="option-item selectable ${ingredientData.selectedOptions.includes(6) ? 'selected' : ''}" 
+                                     onclick="toggleOption(${i}, 6)">0</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+            
+            // 更新复盘显示
+            updateAllReviewDisplays();
+        }
+
+        // 更新配料ID
+        function updateIngredientId(index, newId) {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            const ingredientData = schemeData.ingredients.find(m => m.index === index);
+            if (ingredientData) {
+                ingredientData.id = newId;
+            }
+            
+            updateSchemePreview();
+        }
+
+        // 切换配料显示/隐藏
+        function toggleIngredient(index) {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            const ingredientData = schemeData.ingredients.find(m => m.index === index);
+            if (ingredientData) {
+                ingredientData.hidden = !ingredientData.hidden;
+            }
+            
+            // 更新显示
+            renderIngredientSelector();
+            updateSchemePreview();
+        }
+
+        // 更新让球数
+        function updateHandicap(index, handicap) {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            let ingredientData = schemeData.ingredients.find(m => m.index === index);
+            if (!ingredientData) {
+                const id = index < 10 ? `00${index}` : `0${index}`;
+                ingredientData = {
+                    index: index,
+                    id: id,
+                    selectedHandicap: parseInt(handicap),
+                    selectedOptions: [],
+                    hidden: false,
+                    reviewStatus: 'unset',
+                    correctAnswer: null
+                };
+                schemeData.ingredients.push(ingredientData);
+            } else {
+                ingredientData.selectedHandicap = parseInt(handicap);
+            }
+            
+            // 重要修复：更新让球数后立即更新预览
+            updateSchemePreview();
+        }
+
+        // 切换选项
+        function toggleOption(index, option) {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            // 查找或创建配料数据
+            let ingredientData = schemeData.ingredients.find(m => m.index === index);
+            if (!ingredientData) {
+                const id = index < 10 ? `00${index}` : `0${index}`;
+                ingredientData = {
+                    index: index,
+                    id: id,
+                    selectedHandicap: 0,
+                    selectedOptions: [],
+                    hidden: false,
+                    reviewStatus: 'unset',
+                    correctAnswer: null
+                };
+                schemeData.ingredients.push(ingredientData);
+            }
+            
+            // 如果当前配料处于复盘模式且标记为错误，则点击选项是设置正确答案
+            if (ingredientData.reviewStatus === 'incorrect') {
+                // 设置正确答案
+                ingredientData.correctAnswer = option;
+                updateReviewDisplay(index);
+                return;
+            }
+            
+            // 正常模式下的多选逻辑
+            const optionIndex = ingredientData.selectedOptions.indexOf(option);
+            
+            if (optionIndex === -1) {
+                // 如果选项不在数组中，添加它
+                ingredientData.selectedOptions.push(option);
+            } else {
+                // 如果选项已在数组中，移除它
+                ingredientData.selectedOptions.splice(optionIndex, 1);
+            }
+            
+            // 更新显示
+            updateOptionDisplay(index);
+            updateSchemePreview();
+        }
+
+        // 更新选项显示状态
+        function updateOptionDisplay(index) {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            const ingredientData = schemeData.ingredients.find(m => m.index === index);
+            
+            if (!ingredientData) return;
+            
+            const ingredientElement = document.getElementById(`ingredientItem${index}`);
+            if (!ingredientElement) return;
+            
+            // 重置所有选项的选中状态
+            const selectableItems = ingredientElement.querySelectorAll('.option-item.selectable');
+            selectableItems.forEach(item => {
+                item.classList.remove('selected');
+                item.classList.remove('correct-answer');
+            });
+            
+            // 设置当前选中选项
+            ingredientData.selectedOptions.forEach(option => {
+                const selectedItem = ingredientElement.querySelectorAll('.option-item.selectable')[option - 1];
+                if (selectedItem) {
+                    selectedItem.classList.add('selected');
+                }
+            });
+            
+            // 如果处于复盘模式且已设置正确答案，显示正确答案
+            if (ingredientData.reviewStatus === 'incorrect' && ingredientData.correctAnswer !== null) {
+                const correctItem = ingredientElement.querySelectorAll('.option-item.selectable')[ingredientData.correctAnswer - 1];
+                if (correctItem) {
+                    correctItem.classList.add('correct-answer');
+                }
+            }
+        }
+
+        // 更新复盘状态
+        function updateReviewStatus(index, status) {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            let ingredientData = schemeData.ingredients.find(m => m.index === index);
+            if (!ingredientData) {
+                const id = index < 10 ? `00${index}` : `0${index}`;
+                ingredientData = {
+                    index: index,
+                    id: id,
+                    selectedHandicap: 0,
+                    selectedOptions: [],
+                    hidden: false,
+                    reviewStatus: status,
+                    correctAnswer: null
+                };
+                schemeData.ingredients.push(ingredientData);
+            } else {
+                ingredientData.reviewStatus = status;
+                // 如果切换到正确状态，清空正确答案
+                if (status === 'correct') {
+                    ingredientData.correctAnswer = null;
+                }
+            }
+            
+            updateReviewDisplay(index);
+        }
+
+        // 更新复盘显示
+        function updateReviewDisplay(index) {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            const ingredientData = schemeData.ingredients.find(m => m.index === index);
+            
+            if (!ingredientData) return;
+            
+            const ingredientElement = document.getElementById(`ingredientItem${index}`);
+            const reviewSelect = document.getElementById(`reviewSelect${index}`);
+            
+            if (!ingredientElement || !reviewSelect) return;
+            
+            // 重置行样式
+            ingredientElement.classList.remove('review-correct', 'review-incorrect');
+            reviewSelect.classList.remove('correct', 'incorrect');
+            
+            // 设置行样式
+            if (ingredientData.reviewStatus === 'correct') {
+                ingredientElement.classList.add('review-correct');
+                reviewSelect.classList.add('correct');
+            } else if (ingredientData.reviewStatus === 'incorrect') {
+                ingredientElement.classList.add('review-incorrect');
+                reviewSelect.classList.add('incorrect');
+            }
+            
+            // 更新选择器显示
+            if (reviewSelect) {
+                reviewSelect.value = ingredientData.reviewStatus;
+            }
+            
+            // 更新选项显示
+            updateOptionDisplay(index);
+        }
+
+        // 更新所有复盘显示
+        function updateAllReviewDisplays() {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            schemeData.ingredients.forEach(ingredient => {
+                updateReviewDisplay(ingredient.index);
+            });
+        }
+
+        // 更新配方预览
+        function updateSchemePreview() {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            document.getElementById('schemePreview').textContent = getSchemePreview(schemeData.ingredients);
+        }
+
+        // 获取配方预览文本
+        function getSchemePreview(ingredients) {
+            if (ingredients.length === 0) {
+                return '尚未选择任何配料';
+            }
+            
+            const visibleIngredients = ingredients.filter(ingredient => !ingredient.hidden);
+            
+            return visibleIngredients.map(ingredient => {
+                const handicapText = ingredient.selectedHandicap === 0 ? "0" : 
+                                   ingredient.selectedHandicap > 0 ? `+${ingredient.selectedHandicap}` : 
+                                   `${ingredient.selectedHandicap}`;
+                
+                // 分离上盘和下盘选项
+                const upperOptions = ingredient.selectedOptions.filter(opt => opt <= 3).sort((a, b) => a - b);
+                const lowerOptions = ingredient.selectedOptions.filter(opt => opt >= 4).sort((a, b) => a - b);
+                
+                let result = `配料${ingredient.id}`;
+                
+                // 如果有上盘选项
+                if (upperOptions.length > 0) {
+                    const upperOptionsText = upperOptions.map(opt => {
+                        return opt === 1 ? '3' : opt === 2 ? '1' : '0';
+                    }).join(',');
+                    result += ` 数值0 选项:${upperOptionsText}`;
+                }
+                
+                // 如果有下盘选项
+                if (lowerOptions.length > 0) {
+                    const lowerOptionsText = lowerOptions.map(opt => {
+                        return opt === 4 ? '3' : opt === 5 ? '1' : '0';
+                    }).join(',');
+                    if (upperOptions.length > 0) result += ' | ';
+                    result += ` 数值${handicapText} 选项:${lowerOptionsText}`;
+                }
+                
+                return result;
+            }).join('; ');
+        }
+
+        // 设置配方结果
+        function setResult(result) {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date][schemeType];
+            
+            schemeData.result = result;
+            updateResultButtons(result);
+        }
+
+        // 更新结果按钮状态
+        function updateResultButtons(result) {
+            document.querySelectorAll('.result-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            if (result === 'good') {
+                document.querySelector('.result-btn.good').classList.add('selected');
+            } else if (result === 'bad') {
+                document.querySelector('.result-btn.bad').classList.add('selected');
+            }
+        }
+
+        // 加载日期数据
+        function loadDateData() {
+            const dateInput = document.getElementById('dateInput');
+            appData.currentDate = dateInput.value;
+            renderSchemeContent();
+        }
+
+        // 保存当日数据
+        function saveDateData() {
+            saveData();
+            alert('当日配方已保存！');
+        }
+
+        // 重置当前配方
+        function resetCurrentScheme() {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            
+            if (confirm('确定要重置当前配方吗？这将清除当前所有选择！')) {
+                const ingredientCounts = {
+                    small: 2,
+                    medium: 2,
+                    large: 3,
+                    xlarge: 8
+                };
+                
+                // 完全重置当前配方数据 - 但不影响其他日期
+                appData.dailyData[date][schemeType] = {
+                    ingredients: createInitialIngredients(ingredientCounts[schemeType]),
+                    result: 'pending'
+                };
+                
+                // 重新渲染界面
+                renderSchemeContent();
+            }
+        }
+
+        // 获取一周的所有日期 - 修复版本
+        function getDatesOfWeek(year, week) {
+            const dates = [];
+            
+            // 创建该年1月1日的日期
+            const firstDayOfYear = new Date(year, 0, 1);
+            // 计算1月1日是星期几（0是周日，1是周一...）
+            const firstDayOfWeek = firstDayOfYear.getDay();
+            
+            // 计算该年第一个周一的日期
+            let firstMonday;
+            if (firstDayOfWeek <= 1) {
+                // 如果1月1日是周日(0)或周一(1)
+                firstMonday = new Date(year, 0, 1 + (1 - firstDayOfWeek));
+            } else {
+                // 如果1月1日是周二到周六
+                firstMonday = new Date(year, 0, 1 + (8 - firstDayOfWeek));
+            }
+            
+            // 计算目标周的周一
+            const targetMonday = new Date(firstMonday);
+            targetMonday.setDate(firstMonday.getDate() + (week - 1) * 7);
+            
+            // 生成周一到周日的日期
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(targetMonday);
+                date.setDate(targetMonday.getDate() + i);
+                dates.push(date.toISOString().split('T')[0]);
+            }
+            
+            return dates;
+        }
+
+        // 加载周数据
+        function loadWeekData() {
+            const weekInput = document.getElementById('weekInput').value;
+            if (!weekInput) {
+                alert('请选择周次');
+                return;
+            }
+            
+            const [year, week] = weekInput.split('-W');
+            const weekDates = getDatesOfWeek(parseInt(year), parseInt(week));
+            
+            console.log('加载周数据:', { year, week, weekDates });
+            
+            // 更新统计
+            updateWeekStats(weekDates);
+            
+            // 渲染周表格
+            renderWeekTable(weekDates);
+        }
+
+        // 更新周统计
+        function updateWeekStats(weekDates) {
+            const stats = {
+                small: { good: 0, total: 0 },
+                medium: { good: 0, total: 0 },
+                large: { good: 0, total: 0 },
+                xlarge: { good: 0, total: 0 }
+            };
+            
+            weekDates.forEach(date => {
+                const dayData = appData.dailyData[date];
+                if (dayData) {
+                    ['small', 'medium', 'large', 'xlarge'].forEach(schemeType => {
+                        if (dayData[schemeType] && dayData[schemeType].result !== 'pending') {
+                            stats[schemeType].total++;
+                            if (dayData[schemeType].result === 'good') {
+                                stats[schemeType].good++;
+                            }
+                        }
+                    });
+                }
+            });
+            
+            // 更新显示
+            ['small', 'medium', 'large', 'xlarge'].forEach(schemeType => {
+                document.getElementById(`${schemeType}Stats`).textContent = 
+                    `${stats[schemeType].good}/${stats[schemeType].total}`;
+                
+                const rate = stats[schemeType].total > 0 ? 
+                    ((stats[schemeType].good / stats[schemeType].total) * 100).toFixed(1) : 0;
+                document.getElementById(`${schemeType}Rate`).textContent = `${rate}%`;
+            });
+        }
+
+        // 渲染周表格
+        function renderWeekTable(weekDates) {
+            const container = document.getElementById('weekTableContainer');
+            
+            let html = `
+                <table class="week-table">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>小杯配方</th>
+                            <th>中杯配方</th>
+                            <th>大杯配方</th>
+                            <th>超大杯配方</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+            
+            weekDates.forEach(date => {
+                const dayData = appData.dailyData[date];
+                const dateObj = new Date(date);
+                const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}(${weekDays[dateObj.getDay()]})`;
+                
+                html += `<tr>`;
+                html += `<td>${dateStr}</td>`;
+                
+                ['small', 'medium', 'large', 'xlarge'].forEach(schemeType => {
+                    let cellClass = 'pending-cell';
+                    let cellText = '-';
+                    
+                    if (dayData && dayData[schemeType]) {
+                        const result = dayData[schemeType].result;
+                        if (result === 'good') {
+                            cellClass = 'good-cell';
+                            cellText = '好评';
+                        } else if (result === 'bad') {
+                            cellClass = 'bad-cell';
+                            cellText = '差评';
+                        }
+                    }
+                    
+                    html += `<td class="${cellClass}">${cellText}</td>`;
+                });
+                
+                html += `</tr>`;
+            });
+            
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        // 导出周数据为CSV
+        function exportWeekData() {
+            const weekInput = document.getElementById('weekInput').value;
+            const [year, week] = weekInput.split('-W');
+            const weekDates = getDatesOfWeek(parseInt(year), parseInt(week));
+            
+            let csvContent = "日期,小杯配方,中杯配方,大杯配方,超大杯配方\n";
+            
+            weekDates.forEach(date => {
+                const dayData = appData.dailyData[date];
+                const dateObj = new Date(date);
+                const dateStr = `${dateObj.getFullYear()}/${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+                
+                csvContent += `${dateStr},`;
+                
+                ['small', 'medium', 'large', 'xlarge'].forEach(schemeType => {
+                    let resultText = '-';
+                    
+                    if (dayData && dayData[schemeType]) {
+                        const result = dayData[schemeType].result;
+                        if (result === 'good') {
+                            resultText = '好评';
+                        } else if (result === 'bad') {
+                            resultText = '差评';
+                        }
+                    }
+                    
+                    csvContent += `${resultText},`;
+                });
+                
+                csvContent += "\n";
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `配方记录_${weekInput}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 生成周报
+        function generateWeekReport() {
+            const weekInput = document.getElementById('weekInput').value;
+            const [year, week] = weekInput.split('-W');
+            const weekDates = getDatesOfWeek(parseInt(year), parseInt(week));
+            
+            const stats = {
+                small: { good: 0, total: 0 },
+                medium: { good: 0, total: 0 },
+                large: { good: 0, total: 0 },
+                xlarge: { good: 0, total: 0 }
+            };
+            
+            weekDates.forEach(date => {
+                const dayData = appData.dailyData[date];
+                if (dayData) {
+                    ['small', 'medium', 'large', 'xlarge'].forEach(schemeType => {
+                        if (dayData[schemeType] && dayData[schemeType].result !== 'pending') {
+                            stats[schemeType].total++;
+                            if (dayData[schemeType].result === 'good') {
+                                stats[schemeType].good++;
+                            }
+                        }
+                    });
+                }
+            });
+            
+            let report = `周度配方复盘报告 - ${weekInput}\n\n`;
+            report += `统计周期: ${weekDates[0]} 至 ${weekDates[6]}\n\n`;
+            
+            const schemeNames = {
+                small: '小杯配方',
+                medium: '中杯配方',
+                large: '大杯配方',
+                xlarge: '超大杯配方'
+            };
+            
+            ['small', 'medium', 'large', 'xlarge'].forEach(schemeType => {
+                const rate = stats[schemeType].total > 0 ? 
+                    ((stats[schemeType].good / stats[schemeType].total) * 100).toFixed(1) : 0;
+                
+                report += `${schemeNames[schemeType]}: ${stats[schemeType].good}/${stats[schemeType].total} (${rate}%)\n`;
+            });
+            
+            // 创建可视化图表
+            const chartData = [
+                { name: '小杯', value: stats.small.total > 0 ? (stats.small.good / stats.small.total * 100) : 0 },
+                { name: '中杯', value: stats.medium.total > 0 ? (stats.medium.good / stats.medium.total * 100) : 0 },
+                { name: '大杯', value: stats.large.total > 0 ? (stats.large.good / stats.large.total * 100) : 0 },
+                { name: '超大杯', value: stats.xlarge.total > 0 ? (stats.xlarge.good / stats.xlarge.total * 100) : 0 }
+            ];
+            
+            // 简单的文本图表
+            let chart = "\n好评率对比:\n";
+            chartData.forEach(item => {
+                const bars = '█'.repeat(Math.round(item.value / 5));
+                chart += `${item.name}: ${bars} ${item.value.toFixed(1)}%\n`;
+            });
+            
+            report += chart;
+            
+            alert(report);
+        }
+
+        // 分享配方为图片
+        async function shareScheme() {
+            const date = appData.currentDate;
+            const schemeType = appData.currentScheme;
+            const schemeData = appData.dailyData[date]?.[schemeType];
+
+            if (!schemeData) {
+                alert('当前配方没有数据，无法分享！');
+                return;
+            }
+
+            // 生成分享卡片内容
+            generateShareCard(date, schemeType, schemeData);
+
+            // 等待一小段时间确保渲染完成
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // 截图并下载
+            const shareCard = document.getElementById('shareCard');
+
+            try {
+                const canvas = await html2canvas(shareCard, {
+                    backgroundColor: null,
+                    scale: 2, // 提高清晰度
+                    logging: false,
+                    useCORS: true
+                });
+
+                // 转换为图片并下载
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    const dateStr = date.replace(/-/g, '');
+                    const schemeNames = {
+                        small: '小杯',
+                        medium: '中杯',
+                        large: '大杯',
+                        xlarge: '超大杯'
+                    };
+                    link.download = `配方分享_${dateStr}_${schemeNames[schemeType]}.png`;
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+
+                    alert('配方图片已生成并下载！');
+                }, 'image/png');
+
+            } catch (error) {
+                console.error('生成图片失败:', error);
+                alert('生成图片时出错，请重试！');
+            }
+        }
+
+        // 生成分享卡片内容
+        function generateShareCard(date, schemeType, schemeData) {
+            const shareCard = document.getElementById('shareCard');
+
+            const schemeNames = {
+                small: '小杯配方 (2x1)',
+                medium: '中杯配方 (2x1)',
+                large: '大杯配方 (3x1)',
+                xlarge: '超大杯配方 (mxn)'
+            };
+
+            const resultText = {
+                good: '好评',
+                bad: '差评',
+                pending: '待开奖'
+            };
+
+            const resultClass = schemeData.result || 'pending';
+
+            // 格式化日期
+            const dateObj = new Date(date);
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+            const formattedDate = `${dateObj.getFullYear()}年${dateObj.getMonth() + 1}月${dateObj.getDate()}日 星期${weekDays[dateObj.getDay()]}`;
+
+            // 生成配料列表
+            const visibleIngredients = schemeData.ingredients.filter(ing => !ing.hidden);
+            let ingredientsHtml = '';
+
+            visibleIngredients.forEach(ingredient => {
+                const handicapText = ingredient.selectedHandicap === 0 ? "0" :
+                                   ingredient.selectedHandicap > 0 ? `+${ingredient.selectedHandicap}` :
+                                   `${ingredient.selectedHandicap}`;
+
+                // 分离上盘和下盘选项
+                const upperOptions = ingredient.selectedOptions.filter(opt => opt <= 3).sort((a, b) => a - b);
+                const lowerOptions = ingredient.selectedOptions.filter(opt => opt >= 4).sort((a, b) => a - b);
+
+                let detailText = '';
+
+                if (upperOptions.length > 0) {
+                    const upperText = upperOptions.map(opt => {
+                        return opt === 1 ? '3' : opt === 2 ? '1' : '0';
+                    }).join(', ');
+                    detailText += `数值0 → 选项: ${upperText}`;
+                }
+
+                if (lowerOptions.length > 0) {
+                    const lowerText = lowerOptions.map(opt => {
+                        return opt === 4 ? '3' : opt === 5 ? '1' : '0';
+                    }).join(', ');
+                    if (upperOptions.length > 0) detailText += '<br>';
+                    detailText += `数值${handicapText} → 选项: ${lowerText}`;
+                }
+
+                if (!detailText) {
+                    detailText = '暂未选择';
+                }
+
+                // 复盘状态
+                let reviewBadge = '';
+                if (ingredient.reviewStatus === 'correct') {
+                    reviewBadge = ' <span style="color: #ff4d4f; font-weight: bold;">✓</span>';
+                } else if (ingredient.reviewStatus === 'incorrect') {
+                    reviewBadge = ' <span style="color: #333; font-weight: bold;">✗</span>';
+                    if (ingredient.correctAnswer) {
+                        const correctOpt = ingredient.correctAnswer <= 3 ?
+                            (ingredient.correctAnswer === 1 ? '3' : ingredient.correctAnswer === 2 ? '1' : '0') :
+                            (ingredient.correctAnswer === 4 ? '3' : ingredient.correctAnswer === 5 ? '1' : '0');
+                        detailText += `<br><span style="color: #4CAF50;">正确答案: ${correctOpt}</span>`;
+                    }
+                }
+
+                ingredientsHtml += `
+                    <div class="share-ingredient-item">
+                        <div class="share-ingredient-title">配料 ${ingredient.id}${reviewBadge}</div>
+                        <div class="share-ingredient-detail">${detailText}</div>
+                    </div>
+                `;
+            });
+
+            // 计算统计数据
+            const totalIngredients = visibleIngredients.length;
+            const correctCount = visibleIngredients.filter(ing => ing.reviewStatus === 'correct').length;
+            const incorrectCount = visibleIngredients.filter(ing => ing.reviewStatus === 'incorrect').length;
+
+            shareCard.innerHTML = `
+                <div class="share-header">
+                    <h2>每日配方记录</h2>
+                    <div class="share-date">${formattedDate}</div>
+                </div>
+
+                <div class="share-content">
+                    <div class="share-scheme-type">${schemeNames[schemeType]}</div>
+
+                    <div class="share-result ${resultClass}">
+                        结果: ${resultText[resultClass]}
+                    </div>
+
+                    <div class="share-ingredients">
+                        ${ingredientsHtml}
+                    </div>
+
+                    <div class="share-stats">
+                        <div class="share-stat-item">
+                            <div class="share-stat-label">配料数量</div>
+                            <div class="share-stat-value">${totalIngredients}</div>
+                        </div>
+                        <div class="share-stat-item">
+                            <div class="share-stat-label">正确数</div>
+                            <div class="share-stat-value" style="color: #ff4d4f;">${correctCount}</div>
+                        </div>
+                        <div class="share-stat-item">
+                            <div class="share-stat-label">错误数</div>
+                            <div class="share-stat-value" style="color: #333;">${incorrectCount}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="share-footer">
+                    每日配方记录与复盘系统
+                </div>
+            `;
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>
